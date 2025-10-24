@@ -11,19 +11,12 @@ pipeline that:
   3.  Performs Graph NMF (GNMF) across a range of component counts *k*
       while enforcing smoothness on the PPI graph (λ = 0.9).
   4.  Uses the KneeLocator elbow method to pick the optimal k.
-  5.  Runs GNMF one final time with the chosen k and extracts the W/H
+  5.  Runs GNMF one final time with the chosen k and extracts the W & H
       matrices.
-  6.  Applies hierarchical clustering to H matrix to
-      obtain the final 14 clusters of drug pairs.
-  7.  Saves the resulting cluster assignment table for downstream
-      correlation and permutation testing.
-
-Every section is preceded by **WHY we do it** so colleagues can follow
-*both* the biological reasoning *and* the computational details.
 """
 
 # %% ------------------------------------------------------------------
-# 1. Imports – scientific stack + helper utilities
+# 1. Imports
 # ---------------------------------------------------------------------
 # WHY:  Standard scientific Python libraries cover numerical operations
 #       (NumPy, SciPy), data frames (Pandas), sparse matrices, and
@@ -53,7 +46,7 @@ import seaborn as sns
 #       transpose.  We store samples (drug combinations) in rows and
 #       genes in columns so factorisation splits genes into metagenes
 #       and samples into weighted mixtures of those metagenes.
-file_path = '/content/Network_Popagation_Result_alpha0.5(-log).csv'
+file_path = '/filesData/Network_Popagation_Result_alpha0.5(-log).csv'
 X = pd.read_csv(file_path, index_col=0).T  # transpose so rows = samples
 X_np = X.to_numpy()                        # convert to ndarray for speed
 print('Shape of input matrix X (samples × genes):', X_np.shape)
@@ -158,7 +151,7 @@ def GNMF(X, L, lambd=0.0, n_components=10, tol=1e-4, max_iter=200, verbose=False
 # ---------------------------------------------------------------------
 # WHY:  GNMF enforces metagenes to respect biological proximity.  We
 #       construct L from the cancer‑specific PPI edge list.
-ppi_path = '/content/gene_interaction_cancer_subnetwork.csv'
+ppi_path = '/filesData/gene_interaction_cancer_subnetwork.csv'
 ppi_edges = pd.read_csv(ppi_path, header=None, names=["Source", "Target"])
 G = nx.from_pandas_edgelist(ppi_edges, 'Source', 'Target')
 L = nx.laplacian_matrix(G).todense()  # shape (2100 × 2100)
@@ -195,91 +188,11 @@ plt.show()
 # %% ------------------------------------------------------------------
 # 7. Run GNMF once with optimal k and λ = 0.9
 # ---------------------------------------------------------------------
-W, H, final_err = GNMF(X_np, L, lambd=0.9, n_components=optimal_k,
-                       tol=1e-4, max_iter=2_000, verbose=True)
+H, W, final_err = GNMF(X_np, L, lambd=0.9, n_components=optimal_k,
+                       tol=1e-4, max_iter=3000, verbose=True)
 print('Final GNMF reconstruction error:', final_err)
 
-# %% ------------------------------------------------------------------
-# 8. Hierarchical clustering on metagene activations (H)
-# ---------------------------------------------------------------------
-# WHY:  Each column of H (sample) holds k metagene scores.  We transpose
-#       so rows = samples then cluster via Ward linkage (Euclidean).
-file_path = '/content/Network_Popagation_Result_alpha0.5(-log).csv'
-X = pd.read_csv(file_path, index_col=0).T
-H_df = pd.DataFrame(W, index=X.index, columns=[f'Metagene_{i+1}' for i in range(optimal_k)])
-
-# find optimal cluster count (elbow on WCSS)
-from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
-Z = linkage(H_df, method='ward', metric='euclidean')
-
-def wcss(cluster_labels, data):
-    w = 0.0
-    for lbl in np.unique(cluster_labels):
-        pts = data[cluster_labels == lbl]
-        w += ((pts - pts.mean(axis=0)) ** 2).sum().sum()
-    return w
-wcss_vals = []
-for c in range(1, 51):
-    lbls = fcluster(Z, c, criterion='maxclust')
-    wcss_vals.append(wcss(lbls, H_df))
-kn_clusters = KneeLocator(range(1, 51), wcss_vals, curve='convex', direction='decreasing')
-optimal_c = kn_clusters.elbow
-print('Optimal number of clusters:', optimal_c)
-
-# assign final cluster labels (shifted to start at 1)
-cluster_labels = fcluster(Z, optimal_c, criterion='maxclust')
-clusters = pd.Series(cluster_labels, index=X.index, name='Group').astype(int)
-
-# ───────────────────────────────────────────────────────────────
-# 9. Save cluster table merged with synergy scores for analysis
-# ───────────────────────────────────────────────────────────────
-# WHY:  Merging cluster labels with synergy scores (TDM) allows
-#       group-specific correlation analyses and permutation tests.
-
-# 1) Load synergy table from Excel
-TDM = pd.read_excel(
-    '/content/Drug_Combination_A549.xlsx',   # Excel file
-    sheet_name=0,         # or 'TDM' if you have a named sheet
-    index_col=0           # drug-combination IDs in first column
-)
-
-# 2) Align indices with your cluster labels
-TDM.index = clusters.index
-
-# 3) Merge and sort by cluster group
-out = pd.concat([clusters, TDM], axis=1).sort_values('Group')
-
-# 4) **Remove unwanted columns**
-cols_to_drop = ['TargetGene_row', 'TargetGene_col',
-                'CombineTargets', 'uniqueCombineTargets']
-out.drop(columns=cols_to_drop, inplace=True, errors='ignore')
-
-# 5) Export
-outfile = '/content/GNMF_Clustering_alpha0.5_lambda0.9.csv'
-out.to_csv(outfile)
-
-print('Cluster assignments saved to', outfile)
-
-# ──────────────────────────────────────────────────────────────
-# 10. (Optional) Heat-map of  metagene × sample  matrix
-#     coloured by cluster group
-# ──────────────────────────────────────────────────────────────
-# WHY:  Visual inspection of sample stratification (but transposed).
-
-# build a nice colour palette for the groups
-palette = sns.color_palette('tab20', optimal_c)
-
-# clusters is still indexed by sample, but samples are now COLUMNS, so:
-col_colors = clusters.map({g: palette[g-1] for g in range(1, optimal_c + 1)})
-
-# draw the heat-map (no column clustering so samples stay in original order)
-sns.clustermap(
-    H_df.T,                # <- transposed matrix
-    col_colors=col_colors, # <- colour bar now on columns
-    row_cluster=False,     # keep metagenes in original order
-    figsize=(20, 10)
-)
-
-plt.xlabel('Samples')
-plt.ylabel('Metagenes')
-plt.show()
+df_W = pd.DataFrame(W.T, index=range(2100), columns=range(26))
+df_H = pd.DataFrame(H.T, index=range(26), columns=range(607))
+df_W.to_csv('W.csv')
+df_H.to_csv('H.csv')
