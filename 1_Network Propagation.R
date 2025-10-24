@@ -88,7 +88,7 @@ for (loop in 1:nrow(df.drugcomb)) {
   # 6.1 Create initial vector x0 for this drug pair      #
   # -----------------------------------------------------#
 
-  # x0a, x0b will hold partial contributions of drug A and drug B respectively
+  # x0a, x0b will hold partial contributions of drug A and drug B, respectively
   x0a <- matrix(0, nrow = nrow(A), ncol = 1)
   x0b <- matrix(0, nrow = nrow(A), ncol = 1)
 
