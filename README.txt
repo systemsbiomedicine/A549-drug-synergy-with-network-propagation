@@ -16,12 +16,12 @@ Step 1 : 1_Network Propagation.R
 • Purpose : Propagate drug-target signals through an A549-specific
 network using Random Walk with Restart
 • Main inputs : 
-- gene_interaction_cancer_subnetwork.csv
-- subnetwork_nodes.csv
-- Drug_Combination_A549.xlsx
-- DrugCombInationID.csv
+  - gene_interaction_cancer_subnetwork.csv
+  - subnetwork_nodes.csv
+  - Drug_Combination_A549.xlsx
+  - DrugCombInationID.csv
 • Main output : 
-- Network_Propagation_Result_alpha0.5.csv
+  - Network_Propagation_Result_alpha0.5.csv
 
 Step 2 : 2_Propagated scores differentiating between drug combinations with low and high synergy (Fig 2 and 3).R
 • Language: R
@@ -84,5 +84,6 @@ W.csv (The matrix W consists of metagenes (1-26) as columns and genes as rows, i
 • Main Output:
 200metagene2.csv: A list of the top 200 genes contributing to Metagene 2.
 __________________________________________________________________________
+
 
 
