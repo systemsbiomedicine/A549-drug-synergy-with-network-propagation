@@ -7,6 +7,9 @@ metagene signatures. Subsequent steps cluster drug combinations based on
 the metagene signatures, identify and analyze highly synergistic clusters, 
 and pinpoint top genes for enrichment analysis.
 
+The algorithms used for network propagation and GNMF were derived from the 
+Stratipy library, which can be found at 
+https://github.com/eraldop/stratipy/tree/master.
 __________________________________________________________________________
 
 PIPELINE OVERVIEW
@@ -83,6 +86,7 @@ Step 7 : 7_Identifying top genes in Metagene 2 (Suppl Table S10).R
 • Main Output:
   - 200metagene2.csv: A list of the top 200 genes contributing to Metagene 2.
 __________________________________________________________________________
+
 
 
 
