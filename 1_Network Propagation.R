@@ -2,9 +2,7 @@
 # Network Propagation via Random Walk with Restart (RWR)
 # -------------------------------------------------------------
 # Purpose:
-#   Propagate drug effect signals from their target genes across a
-#   cancer‑specific interaction network to identify synergistic actions of
-#   the drug combinations for the treatment of non-small cell lung cancer.
+#   Propagate drug effect signals from their target genes across a cancer‑specific interaction network
 #
 # Core equation implemented:
 #   xT = α [ I − (1 − α) A D⁻¹ ]⁻¹  x0
@@ -14,17 +12,9 @@
 #   A  : adjacency matrix of undirected cancer sub‑network
 #   D  : diagonal out‑degree matrix (used to row‑normalize A)
 #   α  : restart probability (trade‑off between restart & walk)
-#   I  : identity matrix of size |V| × |V|
-#   xT : the final state of the network after the propagation(propagated profile)
+#   I  : identity matrix
+#   xT : the final state of the network after the propagation (propagated profile)
 #
-# Script outline:
-#   1. Load libraries and input data
-#   2. Construct adjacency & helper matrices
-#   3. Loop over each drug pair to
-#        a) build x0
-#        b) run RWR
-#        c) save xT in results matrix
-#   4. Export results to CSV
 ###############################################################
 
 # ---------------------------#
@@ -41,7 +31,7 @@ library(expm)                    # advanced linear‑algebra functions
 # -----------------------------------------#
 
 # Load edge list (source, target) for cancer‑specific PPI sub‑network
-subnetwork <- read.csv("gene_interaction_cancer_subnetwork.csv", header = FALSE)
+subnetwork <- read.csv("filesData/gene_interaction_cancer_subnetwork.csv", header = FALSE)
 
 # Convert edge list → igraph object (undirected)
 subnetwork <- graph_from_data_frame(subnetwork, directed = FALSE)
@@ -53,9 +43,9 @@ A <- get.adjacency(subnetwork)
 # 3. Load drug‑pair information and list of network node names #
 # -------------------------------------------------------------#
 
-df.drugcomb <- read_xlsx(path = "Drug_Combination_A549.xlsx")  # drug A/B & their targets
-DrugCombID <- read.csv("DrugCombInationID.csv", header = F)
-nodes <- read.csv("subnetwork_nodes.csv", header = TRUE)       # node IDs / gene symbols
+df.drugcomb <- read_xlsx(path = "filesData/Drug_Combination_A549.xlsx")  # drug A/B & their targets
+DrugCombID <- read.csv("filesData/DrugCombInationID.csv", header = F)
+nodes <- read.csv("filesData/subnetwork_nodes.csv", header = TRUE)       # node IDs / gene symbols
 
 # -----------------------------------------------------------------------------#
 # 4. Allocate empty results dataframe (rows: nodes, cols: drug combinations)   #
